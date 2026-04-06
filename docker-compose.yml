@@ -1,0 +1,15 @@
+services:
+  preditivo:
+    build: .
+    container_name: climacta_preditivo
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8001:8001"
+    networks:
+      - climacta_network
+
+networks:
+  climacta_network:
+    external: true
