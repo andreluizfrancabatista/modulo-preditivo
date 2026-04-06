@@ -8,8 +8,8 @@ services:
     ports:
       - "8001:8001"
     networks:
-      - preditivo_net
+      - climacta_network
 
 networks:
-  preditivo_net:
-    driver: bridge
+  climacta_network:
+    external: true
