@@ -1,5 +1,6 @@
 from django.urls import path, include
 
 urlpatterns = [
-    path("api/v1/", include("preditivo.urls")),
+    # Rotas sem prefixo /preditivo/ — o Nginx já remove o prefixo via proxy_pass
+    path("", include("preditivo.urls")),
 ]

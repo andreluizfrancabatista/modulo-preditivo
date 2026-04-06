@@ -1,9 +1,14 @@
+from django.shortcuts import render as django_render
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 import requests
 
 from .services.pipeline import executar
+
+
+def exemplo_view(request):
+    return django_render(request, "preditivo/exemplo.html")
 
 
 class PredicaoView(APIView):

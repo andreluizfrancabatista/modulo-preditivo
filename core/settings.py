@@ -9,6 +9,21 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-key")
 DEBUG      = os.getenv("DEBUG", "False") == "True"
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "*").split(",")
 
+import os as _os
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,   # procura em <app>/templates/
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+            ],
+        },
+    },
+]
+
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.auth",

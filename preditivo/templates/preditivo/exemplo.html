@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Módulo Preditivo — Climacta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Reset & Base ───────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #21262d;
+      --text:      #e6edf3;
+      --muted:     #7d8590;
+      --accent:    #3fb950;
+
+      --dot-green:  #3fb950;
+      --dot-yellow: #d29922;
+      --dot-red:    #f85149;
+      --dot-purple: #bc8cff;
+
+      --header-h: 64px;
+      --radius:   6px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'IBM Plex Sans', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────────── */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 28px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+    }
+
+    .logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .controls label {
+      color: var(--muted);
+      font-size: 12px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .controls select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 5px 10px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    .controls select:focus { border-color: var(--accent); }
+
+    .btn-refresh {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 5px 14px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+
+    .btn-refresh:hover { background: var(--accent); color: var(--bg); }
+
+    .status-bar {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    main {
+      padding: 28px;
+      overflow-x: auto;
+    }
+
+    /* ── Legenda ─────────────────────────────────────────────────────────────── */
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ── Tabela ──────────────────────────────────────────────────────────────── */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 700px;
+    }
+
+    thead th {
+      background: var(--surface);
+      padding: 10px 16px;
+      text-align: center;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    thead th:first-child { text-align: left; min-width: 160px; }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background .1s;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,.02); }
+
+    tbody td {
+      padding: 12px 16px;
+      vertical-align: middle;
+    }
+
+    .talhao-cell { text-align: left; }
+
+    .talhao-name {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .talhao-meta {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+      margin-top: 2px;
+    }
+
+    .day-cell {
+      text-align: center;
+      position: relative;
+    }
+
+    /* ── Bolinhas ────────────────────────────────────────────────────────────── */
+    .dot {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      position: relative;
+    }
+
+    .dot:hover { transform: scale(1.25); }
+
+    .dot-neg1 { background: var(--dot-green);  box-shadow: 0 0 6px var(--dot-green); }
+    .dot-0    { background: var(--dot-yellow); box-shadow: 0 0 6px var(--dot-yellow); }
+    .dot-1    { background: var(--dot-red);    box-shadow: 0 0 6px var(--dot-red); }
+    .dot-2    { background: var(--dot-purple); box-shadow: 0 0 6px var(--dot-purple); }
+    .dot-null { background: var(--border); cursor: default; box-shadow: none; }
+
+    .dot-past { opacity: .55; }
+
+    /* ── Tooltip ─────────────────────────────────────────────────────────────── */
+    .tooltip {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      min-width: 220px;
+      box-shadow: 0 8px 24px rgba(0,0,0,.5);
+      pointer-events: none;
+    }
+
+    .tooltip.visible { display: block; }
+
+    .tooltip-date {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .tooltip-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 10px;
+    }
+
+    .tooltip-rows { display: flex; flex-direction: column; gap: 5px; }
+
+    .tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .tooltip-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .tooltip-value {
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--text);
+    }
+
+    .tooltip-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 7px 0;
+    }
+
+    .tooltip-rec {
+      font-size: 11px;
+      color: var(--text);
+      margin-top: 6px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      background: rgba(255,255,255,.04);
+      font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    /* ── Loading / Error ─────────────────────────────────────────────────────── */
+    .state-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 240px;
+      gap: 12px;
+      color: var(--muted);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+    }
+
+    .spinner {
+      width: 24px; height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-icon { font-size: 28px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    Módulo Preditivo — Climacta
+  </div>
+  <div class="controls">
+    <label>Horizonte</label>
+    <select id="sel-days">
+      <option value="3">3 dias</option>
+      <option value="5">5 dias</option>
+      <option value="7" selected>7 dias</option>
+    </select>
+    <button class="btn-refresh" onclick="carregar()">↻ Atualizar</button>
+  </div>
+  <div class="status-bar" id="status">—</div>
+</header>
+
+<main>
+  <div class="legend">
+    <div class="legend-item"><span class="dot dot-neg1"></span> −1 · Não pulverizar</div>
+    <div class="legend-item"><span class="dot dot-0"></span> 0 · Alerta</div>
+    <div class="legend-item"><span class="dot dot-1"></span> 1 · Pulverizar / 7 dias</div>
+    <div class="legend-item"><span class="dot dot-2"></span> 2 · Pulverizar / 5 dias</div>
+    <div class="legend-item"><span class="dot dot-null"></span> Sem dado</div>
+  </div>
+
+  <div id="content">
+    <div class="state-box"><div class="spinner"></div>Carregando dados...</div>
+  </div>
+</main>
+
+<!-- Tooltip global -->
+<div class="tooltip" id="tooltip"></div>
+
+<script>
+  const API_BASE = '/preditivo/api/v1/predicao/';
+
+  const REC = {
+    '-1': { label: 'Não pulverizar', cls: 'dot-neg1', badge: '#3fb950', color: '#0d1117' },
+     '0': { label: 'Alerta',          cls: 'dot-0',    badge: '#d29922', color: '#0d1117' },
+     '1': { label: 'Pulverizar / 7d', cls: 'dot-1',    badge: '#f85149', color: '#fff'    },
+     '2': { label: 'Pulverizar / 5d', cls: 'dot-2',    badge: '#bc8cff', color: '#0d1117' },
+  };
+
+  const tooltip = document.getElementById('tooltip');
+
+  // ── Tooltip ──────────────────────────────────────────────────────────────────
+  function showTooltip(e, dia, talhaoName) {
+    const rec = dia.recomendacao;
+    const r   = REC[String(rec.codigo)] ?? {};
+
+    const badge = `<span class="tooltip-badge" style="background:${r.badge};color:${r.color}">${rec.codigo} · ${r.label}</span>`;
+
+    const rows = [
+      ['VDS estimado',  dia.vds_estimado   ?? '—'],
+      ['SRVDS',         dia.srvds          ?? '—'],
+      ['PMF (h)',        dia.pmf_horas != null ? dia.pmf_horas.toFixed(1) : '—'],
+      ['Temp. média',   dia.avg_temp   != null ? dia.avg_temp.toFixed(1) + ' °C' : '—'],
+    ].map(([l, v]) =>
+      `<div class="tooltip-row">
+        <span class="tooltip-label">${l}</span>
+        <span class="tooltip-value">${v}</span>
+      </div>`
+    ).join('');
+
+    const chuva = dia.chuva_last_7;
+    const chuvaStr = chuva
+      ? `${chuva.dias_chuva} dia(s) — ${chuva.label}`
+      : '—';
+
+    const estimado = dia.estimado
+      ? '<span style="color:#d29922;font-family:\'IBM Plex Mono\',monospace;font-size:10px">▲ estimado</span>'
+      : '<span style="color:#3fb950;font-family:\'IBM Plex Mono\',monospace;font-size:10px">● histórico</span>';
+
+    tooltip.innerHTML = `
+      <div class="tooltip-date">${talhaoName} · ${dia.date} ${estimado}</div>
+      ${badge}
+      <div class="tooltip-rows">
+        ${rows}
+        <hr class="tooltip-divider"/>
+        <div class="tooltip-row">
+          <span class="tooltip-label">Dias chuva / 7d</span>
+          <span class="tooltip-value">${chuvaStr}</span>
+        </div>
+        <div class="tooltip-row">
+          <span class="tooltip-label">Faixa SRVDS</span>
+          <span class="tooltip-value">${rec.srvds_label ?? '—'}</span>
+        </div>
+      </div>
+      <div class="tooltip-rec">💧 ${rec.texto}</div>
+    `;
+
+    positionTooltip(e);
+    tooltip.classList.add('visible');
+  }
+
+  function positionTooltip(e) {
+    const tw = 240, th = 200;
+    let x = e.clientX + 14;
+    let y = e.clientY + 14;
+    if (x + tw > window.innerWidth)  x = e.clientX - tw - 14;
+    if (y + th > window.innerHeight) y = e.clientY - th - 14;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  }
+
+  document.addEventListener('mousemove', e => {
+    if (tooltip.classList.contains('visible')) positionTooltip(e);
+  });
+
+  document.addEventListener('click', () => tooltip.classList.remove('visible'));
+
+  // ── Renderização ──────────────────────────────────────────────────────────────
+  function dotClass(codigo, estimado) {
+    const cls = { '-1':'dot-neg1', '0':'dot-0', '1':'dot-1', '2':'dot-2' }[String(codigo)] ?? 'dot-null';
+    return cls + (estimado === false ? ' dot-past' : '');
+  }
+
+  function formatDate(dateStr) {
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}`;
+  }
+
+  function weekday(dateStr) {
+    const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    return days[new Date(dateStr + 'T12:00:00').getDay()];
+  }
+
+  function render(data, days) {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Coletar datas futuras (estimadas) únicas em ordem
+    const futureDates = [...new Set(
+      data.flatMap(t => t.serie.filter(d => d.estimado && d.date > today).map(d => d.date))
+    )].sort().slice(0, days);
+
+    if (!futureDates.length) {
+      return '<div class="state-box"><span class="error-icon">📭</span>Nenhuma data futura encontrada.</div>';
+    }
+
+    // Cabeçalho
+    const thDates = futureDates.map(d =>
+      `<th>${weekday(d)}<br/><span style="font-weight:400">${formatDate(d)}</span></th>`
+    ).join('');
+
+    // Linhas
+    const rows = data.map(talhao => {
+      const byDate = Object.fromEntries(talhao.serie.map(d => [d.date, d]));
+      const fazenda = typeof talhao.fazenda === 'object'
+        ? talhao.fazenda?.name ?? talhao.fazenda
+        : talhao.fazenda;
+
+      const cells = futureDates.map(date => {
+        const dia = byDate[date];
+        if (!dia) return `<td class="day-cell"><span class="dot dot-null"></span></td>`;
+
+        const cls   = dotClass(dia.recomendacao?.codigo, dia.estimado);
+        const name  = talhao.talhao;
+        return `<td class="day-cell">
+          <span class="dot ${cls}"
+            data-dia='${JSON.stringify(dia).replace(/'/g,"&#39;")}'
+            data-talhao="${name}">
+          </span>
+        </td>`;
+      }).join('');
+
+      return `<tr>
+        <td class="talhao-cell">
+          <div class="talhao-name">${talhao.talhao}</div>
+          <div class="talhao-meta">#${talhao.id} · ${talhao.cultivo ?? 'sem cultivo'} · fazenda ${fazenda}</div>
+        </td>
+        ${cells}
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Talhão</th>
+              ${thDates}
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  // ── Delegação de eventos nas bolinhas ─────────────────────────────────────────
+  document.getElementById('content').addEventListener('click', e => {
+    const dot = e.target.closest('.dot[data-dia]');
+    if (!dot) return;
+    e.stopPropagation();
+    const dia    = JSON.parse(dot.dataset.dia);
+    const talhao = dot.dataset.talhao;
+    showTooltip(e, dia, talhao);
+  });
+
+  // ── Fetch + render ────────────────────────────────────────────────────────────
+  async function carregar() {
+    const days = document.getElementById('sel-days').value;
+    const content = document.getElementById('content');
+    const status  = document.getElementById('status');
+
+    content.innerHTML = '<div class="state-box"><div class="spinner"></div>Carregando dados...</div>';
+    status.textContent = '…';
+
+    try {
+      const t0  = Date.now();
+      const res = await fetch(`${API_BASE}?days=${days}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const ms   = Date.now() - t0;
+
+      content.innerHTML = render(json.results, parseInt(days));
+
+      // Re-bind eventos após re-render
+      document.getElementById('content').addEventListener('click', e => {
+        const dot = e.target.closest('.dot[data-dia]');
+        if (!dot) return;
+        e.stopPropagation();
+        showTooltip(e, JSON.parse(dot.dataset.dia), dot.dataset.talhao);
+      });
+
+      status.textContent = `${json.count} talhão(ões) · ${ms}ms · ${new Date().toLocaleTimeString('pt-BR')}`;
+    } catch (err) {
+      content.innerHTML = `<div class="state-box">
+        <span class="error-icon">⚠️</span>
+        Erro ao carregar: ${err.message}
+      </div>`;
+      status.textContent = 'erro';
+    }
+  }
+
+  document.getElementById('sel-days').addEventListener('change', carregar);
+  carregar();
+</script>
+</body>
+</html>
