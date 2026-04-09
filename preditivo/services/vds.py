@@ -50,6 +50,41 @@ def calcular_recomendacao(srvds, dias_chuva, threshold):
     }
 
 
+# ── AD (alerta de decisão) ────────────────────────────────────────────────────
+# Matriz:
+#              SRUP <= 60   61–80   > 80      (colunas)
+# SRVDS  < 9      -1         0       1
+# SRVDS  9–15      0         0       1
+# SRVDS  > 15      1         1       1
+
+_AD_MATRIX = [
+    [-1, 0, 1],
+    [ 0, 0, 1],
+    [ 1, 1, 1],
+]
+
+def calcular_ad(srup, srvds):
+    """
+    Mapeia srup → coluna e srvds → linha na matriz AD.
+    Retorna -1, 0 ou 1.
+    """
+    if srup <= 60:
+        col = 0
+    elif srup <= 80:
+        col = 1
+    else:
+        col = 2
+
+    if srvds < 9:
+        linha = 0
+    elif srvds <= 15:
+        linha = 1
+    else:
+        linha = 2
+
+    return _AD_MATRIX[linha][col]
+
+
 # ── Série base (rota /predicao/) ──────────────────────────────────────────────
 def calcular_serie(serie, threshold):
     """
@@ -77,56 +112,59 @@ def calcular_serie(serie, threshold):
 def calcular_serie_detalhada(serie, threshold):
     """
     Estende cada entrada da série com os quatro métodos no mesmo
-    formato do /diseases/daily-records/.
+    formato do /diseases/daily-records/, acrescidos de 'ad' e 'am'.
 
     method_a:
         up_dia  = 0 se vds_dia == 0, senão avg_temp / UP_DIVISOR
         vds_dia = vds_estimado
         srup    = soma acumulativa dos últimos 7 dias de up_dia
-        srvds   = soma acumulativa dos últimos 7 dias de vds_dia (= srvds já calculado)
+        srvds   = soma acumulativa dos últimos 7 dias de vds_dia
+        ad      = matriz AD(srup, srvds) → -1, 0 ou 1
+        am      = None
 
     method_b:
-        tudo None / False (sem implementação no modelo preditivo)
+        ad = None, am = None
 
     method_c:
         vds_dia = vds_estimado
         svds    = soma acumulativa de TODOS os vds disponíveis até o dia
         srvds   = mesmo que method_a.srvds
+        ad      = matriz AD(srup, srvds) — mesmo srup do method_a
+        am      = None
 
     method_d:
         tudo None / False (aguardando especificação)
+        ad = None, am = None
     """
-    # Primeiro passa: base (srvds, recomendacao, etc.)
+    # Primeiro passo: base (srvds, recomendacao, chuva_last_7)
     calcular_serie(serie, threshold)
 
-    # Segundo passa: métodos detalhados
+    # Segundo passo: métodos detalhados
     svds_acum = 0.0   # acumulado irrestrito para method_c.svds
 
     for i, dia in enumerate(serie):
         vds_dia  = dia["vds_estimado"]
         avg_temp = dia.get("avg_temp") or 0.0
 
-        # up_dia
-        if vds_dia == 0:
-            up_dia = 0.0
-        else:
-            up_dia = round(avg_temp / UP_DIVISOR, 4)
+        # ── up_dia ───────────────────────────────────────────────────────────
+        up_dia = 0.0 if vds_dia == 0 else round(avg_temp / UP_DIVISOR, 4)
 
-        # srup — soma dos últimos 7 up_dia
-        # precisamos dos up_dia anteriores já calculados
-        janela_up = []
-        for j in range(max(0, i - JANELA_DIAS + 1), i):
-            janela_up.append(serie[j].get("_up_dia", 0.0))
+        # ── srup: soma dos últimos 7 up_dia (incluindo o atual) ──────────────
+        janela_up = [serie[j].get("_up_dia", 0.0)
+                     for j in range(max(0, i - JANELA_DIAS + 1), i)]
         janela_up.append(up_dia)
         srup = round(sum(janela_up), 4)
 
-        # srvds (janela 7 dias — já calculado em calcular_serie)
+        # ── srvds: janela 7 dias (já calculado em calcular_serie) ────────────
         srvds = dia["srvds"]
 
-        # svds acumulativo irrestrito (method_c)
+        # ── svds acumulativo irrestrito (method_c) ────────────────────────────
         svds_acum = round(svds_acum + vds_dia, 4)
 
-        # Salva up_dia temporariamente para as iterações seguintes
+        # ── AD (compartilhado por method_a e method_c) ────────────────────────
+        ad = calcular_ad(srup, srvds)
+
+        # Salva up_dia para iterações seguintes calcularem srup
         dia["_up_dia"] = up_dia
 
         dia["methods"] = {
@@ -137,12 +175,16 @@ def calcular_serie_detalhada(serie, threshold):
                 "srvds":          srvds,
                 "teve_aplicacao": False,
                 "sob_protecao":   False,
+                "ad":             ad,
+                "am":             None,
             },
             "method_b": {
                 "vds_dia":        None,
                 "svds":           None,
                 "teve_aplicacao": False,
                 "sob_protecao":   False,
+                "ad":             None,
+                "am":             None,
             },
             "method_c": {
                 "vds_dia":        vds_dia,
@@ -150,6 +192,8 @@ def calcular_serie_detalhada(serie, threshold):
                 "srvds":          srvds,
                 "teve_aplicacao": False,
                 "sob_protecao":   False,
+                "ad":             ad,
+                "am":             None,
             },
             "method_d": {
                 "df":                  None,
@@ -163,6 +207,8 @@ def calcular_serie_detalhada(serie, threshold):
                 "hours_low_humidity":  None,
                 "teve_aplicacao":      False,
                 "sob_protecao":        False,
+                "ad":                  None,
+                "am":                  None,
             },
         }
 
