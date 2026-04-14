@@ -257,52 +257,6 @@ Mesmo retorno acima, com `methods` adicionado em cada entrada da `serie`:
 
 ---
 
-## Campos de `methods` (rota `/detalhada/`)
-
-### method_a
-
-| Campo            | Tipo    | Descrição                                                                 |
-|------------------|---------|---------------------------------------------------------------------------|
-| `up_dia`         | float   | `0` se `vds_dia == 0`, senão `avg_temp / 2.984`                           |
-| `vds_dia`        | int     | Mesmo que `vds_estimado`                                                  |
-| `srup`           | float   | Soma acumulada de `up_dia` nos últimos 7 dias                             |
-| `srvds`          | int     | Soma acumulada de `vds_dia` nos últimos 7 dias                            |
-| `teve_aplicacao` | bool    | Sempre `false`                                                            |
-| `sob_protecao`   | bool    | Sempre `false`                                                            |
-| `ad`             | int     | Alerta de decisão: `-1`, `0` ou `1` (ver matriz AD abaixo)               |
-| `am`             | null    | Sempre `null` (aguardando especificação)                                  |
-
-### method_b
-
-Sem modelo preditivo implementado. Todos os campos numéricos são `null`.
-
-| Campo            | Tipo | Descrição      |
-|------------------|------|----------------|
-| `vds_dia`        | null | Sempre `null`  |
-| `svds`           | null | Sempre `null`  |
-| `teve_aplicacao` | bool | Sempre `false` |
-| `sob_protecao`   | bool | Sempre `false` |
-| `ad`             | null | Sempre `null`  |
-| `am`             | null | Sempre `null`  |
-
-### method_c
-
-| Campo            | Tipo  | Descrição                                               |
-|------------------|-------|---------------------------------------------------------|
-| `vds_dia`        | int   | Mesmo que `vds_estimado`                                |
-| `svds`           | float | Soma acumulada irrestrita de todos os `vds` disponíveis |
-| `srvds`          | int   | Mesmo que `method_a.srvds`                              |
-| `teve_aplicacao` | bool  | Sempre `false`                                          |
-| `sob_protecao`   | bool  | Sempre `false`                                          |
-| `ad`             | int   | Mesmo que `method_a.ad` (compartilha `srup` e `srvds`)  |
-| `am`             | null  | Sempre `null` (aguardando especificação)                |
-
-### method_d
-
-Aguardando especificação. Todos os campos numéricos são `null`, booleanos são `false`.
-
----
-
 ## Matriz AD (Alerta de Decisão)
 
 Usada por `method_a.ad` e `method_c.ad`.
